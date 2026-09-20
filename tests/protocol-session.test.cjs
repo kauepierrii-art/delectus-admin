@@ -29,7 +29,7 @@ function handler({ active = true, resume = false } = {}) {
           return Promise.resolve({ error: null });
         },
         async maybeSingle() {
-          if (table === 'protocol_reference_aliases') return { data: { reference_id: 'ref-1' }, error: null };
+          if (table === 'protocol_reference_aliases') return { data: { reference_id: 'ref-1', is_active: true }, error: null };
           if (table === 'protocol_references') return { data: { id: 'ref-1', is_active: active }, error: null };
           if (table === 'protocol_sessions') return {
             data: resume ? { id: 'session-1', current_stage: 3 } : null,
