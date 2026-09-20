@@ -14,7 +14,7 @@ function corsHeaders(req: Request) {
       ? origin
       : "https://kauepierrii-art.github.io",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Vary": "Origin",
   };
 }
@@ -30,7 +30,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders(req) });
   }
-  if (req.method !== "GET") {
+  if (req.method !== "GET" && req.method !== "POST") {
     return json(req, { error: "Método não permitido." }, 405);
   }
 
@@ -62,14 +62,47 @@ Deno.serve(async (req: Request) => {
   if (adminError) return json(req, { error: "Falha ao verificar autorização." }, 500);
   if (!adminRecord) return json(req, { error: "Usuário sem permissão administrativa." }, 403);
 
+  if (req.method === "POST") {
+    let payload: { action?: unknown; sessionId?: unknown };
+    try {
+      payload = await req.json();
+    } catch {
+      return json(req, { error: "Solicitação inválida." }, 400);
+    }
+    if (payload.action !== "reset-session" || typeof payload.sessionId !== "string" ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload.sessionId)) {
+      return json(req, { error: "Solicitação inválida." }, 400);
+    }
+
+    const { data: protocolSession, error: sessionError } = await admin
+      .from("protocol_sessions")
+      .select("id")
+      .eq("id", payload.sessionId)
+      .maybeSingle();
+    if (sessionError) return json(req, { error: "Falha ao localizar sessão." }, 500);
+    if (!protocolSession) return json(req, { error: "Sessão não localizada." }, 404);
+
+    const { error: resetError } = await admin.from("protocol_sessions")
+      .update({
+        current_stage: 0,
+        completed_stages: [],
+        reset_at: new Date().toISOString(),
+        reset_acknowledged_at: null,
+        reset_by: userData.user.id,
+      })
+      .eq("id", protocolSession.id);
+    if (resetError) return json(req, { error: "Não foi possível reiniciar o protocolo." }, 500);
+    return json(req, { ok: true });
+  }
+
   const [{ data: references, error: referencesError }, { data: sessions, error: sessionsError }] =
     await Promise.all([
       admin.from("protocol_references")
-        .select("id, code, meaning, is_active, created_at, protocol_reference_aliases(alias)")
+        .select("id, code, meaning, is_active, created_at, protocol_reference_aliases(alias, is_active)")
         .eq("is_active", true)
         .order("code"),
       admin.from("protocol_sessions")
-        .select("id, reference_id, current_stage, completed_stages, first_seen_at, last_seen_at")
+        .select("id, reference_id, current_stage, completed_stages, first_seen_at, last_seen_at, reset_at")
         .order("last_seen_at", { ascending: false }),
     ]);
 
@@ -88,7 +121,9 @@ Deno.serve(async (req: Request) => {
       id: reference.id,
       code: reference.code,
       meaning: reference.meaning,
-      aliases: (reference.protocol_reference_aliases ?? []).map((entry) => entry.alias),
+      aliases: (reference.protocol_reference_aliases ?? [])
+        .filter((entry) => entry.is_active)
+        .map((entry) => entry.alias),
       active: reference.is_active,
       sessionCount: related.length,
       highestStage,
@@ -99,6 +134,7 @@ Deno.serve(async (req: Request) => {
         completedStages: session.completed_stages,
         firstSeenAt: session.first_seen_at,
         lastSeenAt: session.last_seen_at,
+        resetAt: session.reset_at,
       })),
     };
   });
@@ -114,3 +150,4 @@ Deno.serve(async (req: Request) => {
     references: rows,
   });
 });
+
