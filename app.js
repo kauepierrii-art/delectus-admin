@@ -97,7 +97,8 @@ function renderReferences() {
   const query = searchInput.value.trim().toLocaleLowerCase("pt-BR");
   const references = (dashboardData?.references ?? []).filter((reference) =>
     reference.code.toLocaleLowerCase("pt-BR").includes(query) ||
-    reference.meaning.toLocaleLowerCase("pt-BR").includes(query)
+    reference.meaning.toLocaleLowerCase("pt-BR").includes(query) ||
+    (reference.aliases ?? []).some((alias) => alias.toLocaleLowerCase("pt-BR").includes(query))
   );
 
   tableMessage.hidden = references.length > 0;
@@ -108,7 +109,7 @@ function renderReferences() {
 
   referencesBody.innerHTML = references.map((reference) => `
     <tr class="reference-row">
-      <td><strong>${escapeHtml(reference.code)}</strong><small>${escapeHtml(reference.meaning)}</small></td>
+      <td><strong>${escapeHtml(reference.code)}</strong><small>${escapeHtml((reference.aliases ?? []).join(" · "))}</small></td>
       <td><span class="status ${reference.active ? "active" : "inactive"}">${reference.active ? "ATIVA" : "INATIVA"}</span></td>
       <td>${reference.sessionCount}</td>
       <td>${escapeHtml(stages[reference.highestStage] ?? "—")}</td>

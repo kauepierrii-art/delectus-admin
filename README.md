@@ -17,7 +17,9 @@ Ative Pages com origem GitHub Actions. Repositórios privados exigem um plano Gi
 
 ## Estado da integração
 
-As 19 referências estão cadastradas no banco. O Protocolo ainda não envia sessões ou progresso; a coleta será implementada na integração seguinte. Sessões representam navegadores, não uma contagem exata de pessoas. A mesma referência poderá ter várias sessões independentes.
+Há 20 grupos ativos em português e 63 variantes em latim, armazenados somente no banco. As referências anteriores foram desativadas. O Protocolo ainda não envia sessões ou progresso; a coleta será implementada na integração seguinte. Sessões representam navegadores, não uma contagem exata de pessoas. A mesma referência poderá ter várias sessões independentes.
+
+A integração de acesso deve normalizar a entrada com trim, espaços internos consecutivos para um espaço e lowercase, procurar `protocol_reference_aliases.alias` e verificar `protocol_references.is_active`. Nunca validar pelo nome português do grupo. Não publicar a lista de senhas no repositório.
 
 ## Primeiro administrador
 
