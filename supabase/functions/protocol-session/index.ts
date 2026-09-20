@@ -78,10 +78,10 @@ Deno.serve(async (req: Request) => {
     const alias = normalize(payload.reference);
     if (!alias) return reply(req, 401, { error: "Referência não localizada." });
     const { data: aliasRow, error: aliasError } = await db
-      .from("protocol_reference_aliases").select("reference_id")
+      .from("protocol_reference_aliases").select("reference_id, is_active")
       .eq("alias", alias).maybeSingle();
     if (aliasError) return reply(req, 500, { error: "Falha ao verificar referência." });
-    if (!aliasRow) return reply(req, 401, { error: "Referência não localizada." });
+    if (!aliasRow?.is_active) return reply(req, 401, { error: "Referência não localizada." });
     const { data: reference, error: referenceError } = await db
       .from("protocol_references").select("id, is_active")
       .eq("id", aliasRow.reference_id).maybeSingle();
