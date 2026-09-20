@@ -88,6 +88,8 @@ function sessionDetails(reference) {
           <strong>${escapeHtml(stages[session.currentStage] ?? "Etapa desconhecida")}</strong>
           <small>Primeiro acesso: ${formatDate(session.firstSeenAt)}</small>
           <small>Última atividade: ${formatDate(session.lastSeenAt)}</small>
+          ${session.resetAt ? `<small>Reiniciado em: ${formatDate(session.resetAt)}</small>` : ""}
+          <button class="details-button reset-session-button" type="button" data-session-id="${escapeHtml(session.id)}">REINICIAR PROTOCOLO</button>
         </article>
       `).join("")}
     </div>`;
@@ -122,6 +124,7 @@ function renderReferences() {
   `).join("");
 
   referencesBody.querySelectorAll(".details-button").forEach((button) => {
+    if (button.classList.contains("reset-session-button")) return;
     button.addEventListener("click", () => {
       const row = button.closest("tr").nextElementSibling;
       const opening = row.hidden;
@@ -130,6 +133,34 @@ function renderReferences() {
       button.textContent = opening ? "FECHAR" : "DETALHES";
     });
   });
+  referencesBody.querySelectorAll(".reset-session-button").forEach((button) => {
+    button.addEventListener("click", () => resetSession(button.dataset.sessionId));
+  });
+}
+
+async function resetSession(sessionId) {
+  if (!sessionId || !window.confirm("Reiniciar este protocolo? O histórico da sessão será preservado, mas o participante voltará à etapa inicial no próximo acesso.")) return;
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return;
+  refreshButton.disabled = true;
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-dashboard`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "reset-session", sessionId }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "Não foi possível reiniciar o protocolo.");
+    await loadDashboard();
+  } catch (error) {
+    window.alert(error.message || "Não foi possível reiniciar o protocolo.");
+  } finally {
+    refreshButton.disabled = false;
+  }
 }
 
 async function loadDashboard() {
@@ -207,3 +238,4 @@ supabase.auth.onAuthStateChange((_event, session) => {
   // Leave the auth callback before calling getSession (Supabase auth lock).
   else setTimeout(() => loadDashboard(), 0);
 });
+
