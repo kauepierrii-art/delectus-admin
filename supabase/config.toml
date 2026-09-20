@@ -2,3 +2,9 @@
 # The function validates every token with Auth.getUser, then checks admin_users.
 # This supports asymmetric Auth signing keys without the legacy gateway verifier.
 verify_jwt = false
+
+[functions.protocol-session]
+# Participants are anonymous. This function validates its own opaque session
+# token and reference on the server, so it must accept the publishable key.
+verify_jwt = false
+
