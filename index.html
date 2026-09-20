@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#160b0b" />
+    <title>Gestão — Protocolo DELECTUS</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="identity">
+          <span class="seal" aria-hidden="true">D</span>
+          <div>
+            <p>ORDO MOGNUS · CONTROLE INTERNO</p>
+            <h1>PROTOCOLO DELECTUS</h1>
+          </div>
+        </div>
+        <button id="logoutButton" class="quiet-button" type="button" hidden>ENCERRAR SESSÃO</button>
+      </header>
+
+      <section id="loginView" class="login-view">
+        <div class="login-copy">
+          <p class="eyebrow">ACESSO ADMINISTRATIVO</p>
+          <h2>Gestão de referências</h2>
+          <p>Área reservada ao acompanhamento dos convites físicos e do avanço no protocolo.</p>
+        </div>
+        <form id="loginForm" class="login-card">
+          <label for="email">E-MAIL ADMINISTRATIVO</label>
+          <input id="email" name="email" type="email" autocomplete="username" required />
+          <label for="password">SENHA</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required />
+          <button id="loginButton" class="primary-button" type="submit">ENTRAR NO PAINEL</button>
+          <p id="loginMessage" class="form-message" role="status"></p>
+        </form>
+      </section>
+
+      <section id="dashboardView" class="dashboard" hidden>
+        <div class="dashboard-heading">
+          <div>
+            <p class="eyebrow">VISÃO GERAL</p>
+            <h2>Acompanhamento do protocolo</h2>
+            <p id="lastUpdate" class="muted">Aguardando atualização.</p>
+          </div>
+          <button id="refreshButton" class="quiet-button" type="button">ATUALIZAR DADOS</button>
+        </div>
+
+        <div id="summaryCards" class="summary-grid" aria-live="polite"></div>
+
+        <section class="records-panel">
+          <div class="records-toolbar">
+            <div>
+              <p class="eyebrow">CONVITES FÍSICOS</p>
+              <h3>Referências cadastradas</h3>
+            </div>
+            <label class="search-box">
+              <span>BUSCAR</span>
+              <input id="searchInput" type="search" placeholder="Nome da referência" />
+            </label>
+          </div>
+          <div id="tableMessage" class="table-message" role="status">Carregando registros…</div>
+          <div class="table-wrap">
+            <table id="referencesTable" hidden>
+              <thead>
+                <tr>
+                  <th>REFERÊNCIA</th>
+                  <th>ESTADO</th>
+                  <th>SESSÕES</th>
+                  <th>MAIOR AVANÇO</th>
+                  <th>ÚLTIMA ATIVIDADE</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="referencesBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
