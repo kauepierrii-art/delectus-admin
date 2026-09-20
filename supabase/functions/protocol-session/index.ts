@@ -88,11 +88,18 @@ Deno.serve(async (req: Request) => {
     if (referenceError) return reply(req, 500, { error: "Falha ao verificar referência." });
     if (!reference?.is_active) return reply(req, 401, { error: "Referência não localizada." });
 
-    let session: { id: string; current_stage: number } | null = null;
+    const deviceId = validToken(payload.deviceId) ? payload.deviceId : newToken();
+    let session: {
+      id: string;
+      current_stage: number;
+      reset_at?: string | null;
+      reset_acknowledged_at?: string | null;
+    } | null = null;
+    let created = false;
     let token = validToken(payload.token) ? payload.token : "";
     if (token) {
       const { data, error } = await db.from("protocol_sessions")
-        .select("id, current_stage").eq("reference_id", reference.id)
+        .select("id, current_stage, reset_at, reset_acknowledged_at").eq("reference_id", reference.id)
         .eq("access_token_hash", await hashToken(token)).maybeSingle();
       if (error) return reply(req, 500, { error: "Falha ao consultar sessão." });
       session = data;
@@ -100,20 +107,48 @@ Deno.serve(async (req: Request) => {
     if (!session) {
       token = newToken();
       const { data, error } = await db.from("protocol_sessions")
-        .insert({ reference_id: reference.id, access_token_hash: await hashToken(token) })
-        .select("id, current_stage").single();
+        .insert({
+          reference_id: reference.id,
+          device_hash: await hashToken(deviceId),
+          access_token_hash: await hashToken(token),
+        })
+        .select("id, current_stage, reset_at, reset_acknowledged_at").single();
       if (error || !data) return reply(req, 500, { error: "Falha ao iniciar sessão." });
       session = data;
+      created = true;
     }
     const { error: seenError } = await db.from("protocol_sessions")
       .update({ last_seen_at: new Date().toISOString() }).eq("id", session.id);
     if (seenError) return reply(req, 500, { error: "Falha ao atualizar sessão." });
-    // O evento de acesso não contém endereço IP, email ou a referência em texto puro.
-    await db.from("protocol_progress_events").insert({
-      session_id: session.id, reference_id: reference.id,
-      stage: Number(session.current_stage) || 0, event_type: "access",
+    // O primeiro acesso já está representado por first_seen_at. O evento é
+    // criado somente uma vez, ao abrir uma sessão nova, para não duplicar
+    // telemetria em recarregamentos ou tentativas repetidas.
+    if (created) {
+      const { error: eventError } = await db.from("protocol_progress_events").insert({
+        session_id: session.id, reference_id: reference.id,
+        stage: Number(session.current_stage) || 0, event_type: "access",
+      });
+      if (eventError) console.error("Falha ao registrar primeiro acesso.");
+    }
+    const resetRequired = Boolean(session.reset_at &&
+      (!session.reset_acknowledged_at || session.reset_acknowledged_at < session.reset_at));
+    return reply(req, 200, {
+      token, reference: alias.toUpperCase(), currentStage: session.current_stage,
+      resetRequired, resetAt: resetRequired ? session.reset_at : null,
     });
-    return reply(req, 200, { token, reference: alias.toUpperCase(), currentStage: session.current_stage });
+  }
+
+  if (payload.action === "ack-reset") {
+    if (!validToken(payload.token) || typeof payload.resetAt !== "string")
+      return reply(req, 400, { error: "Solicitação inválida." });
+    const digest = await hashToken(payload.token);
+    const { error } = await db.from("protocol_sessions")
+      .update({ reset_acknowledged_at: new Date().toISOString() })
+      .eq("access_token_hash", digest)
+      // Do not acknowledge a newer reset that could have happened after open.
+      .eq("reset_at", payload.resetAt);
+    if (error) return reply(req, 500, { error: "Falha ao confirmar reinício." });
+    return reply(req, 200, { ok: true });
   }
 
   if (payload.action === "complete") {
@@ -154,3 +189,4 @@ Deno.serve(async (req: Request) => {
   }
   return reply(req, 400, { error: "Operação inválida." });
 });
+
