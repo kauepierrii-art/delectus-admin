@@ -98,7 +98,7 @@ Deno.serve(async (req: Request) => {
   const [{ data: references, error: referencesError }, { data: sessions, error: sessionsError }] =
     await Promise.all([
       admin.from("protocol_references")
-        .select("id, code, meaning, is_active, created_at, protocol_reference_aliases(alias)")
+        .select("id, code, meaning, is_active, created_at, protocol_reference_aliases(alias, is_active)")
         .eq("is_active", true)
         .order("code"),
       admin.from("protocol_sessions")
@@ -121,7 +121,9 @@ Deno.serve(async (req: Request) => {
       id: reference.id,
       code: reference.code,
       meaning: reference.meaning,
-      aliases: (reference.protocol_reference_aliases ?? []).map((entry) => entry.alias),
+      aliases: (reference.protocol_reference_aliases ?? [])
+        .filter((entry) => entry.is_active)
+        .map((entry) => entry.alias),
       active: reference.is_active,
       sessionCount: related.length,
       highestStage,
