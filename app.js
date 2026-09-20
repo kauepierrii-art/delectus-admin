@@ -3,7 +3,7 @@ import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./config.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 const stages = [
-  "Não iniciado",
+  "Acesso confirmado",
   "01 — Identificação",
   "02 — Origem",
   "03 — Observação",
@@ -114,7 +114,9 @@ function renderReferences() {
       <td><strong>${escapeHtml(reference.code)}</strong><small>${escapeHtml((reference.aliases ?? []).join(" · "))}</small></td>
       <td><span class="status ${reference.active ? "active" : "inactive"}">${reference.active ? "ATIVA" : "INATIVA"}</span></td>
       <td>${reference.sessionCount}</td>
-      <td>${escapeHtml(stages[reference.highestStage] ?? "—")}</td>
+      <td>${reference.sessionCount
+        ? escapeHtml(stages[reference.highestStage] ?? "—")
+        : "Não iniciado"}</td>
       <td>${formatDate(reference.lastActivity)}</td>
       <td><button class="details-button" type="button" aria-expanded="false">DETALHES</button></td>
     </tr>
